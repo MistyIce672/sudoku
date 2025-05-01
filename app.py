@@ -86,4 +86,4 @@ def handle_cell_update(data):
             }, room=game_id)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True) 
+    socketio.run(app, debug=True) 
