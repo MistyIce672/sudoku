@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Sudoku Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .container {
+            max-width: 100%;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 1px;
+            background-color: #333;
+            padding: 2px;
+            margin: 1rem auto;
+            max-width: min(500px, 90vw);
+            aspect-ratio: 1;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            border: none;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        .cell:focus {
+            outline: 2px solid #4CAF50;
+        }
+        .cell:nth-child(3n) {
+            border-right: 2px solid #333;
+        }
+        .cell:nth-child(9n) {
+            border-right: none;
+        }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #333;
+        }
+        .game-info {
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            text-align: center;
+        }
+        h1 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            margin-bottom: 1rem;
+        }
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 0.5rem;
+            max-width: min(500px, 90vw);
+            margin: 1rem auto;
+        }
+        .number-button {
+            aspect-ratio: 1;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .number-button:hover {
+            background-color: #45a049;
+        }
+        .number-button.active {
+            background-color: #2d6a30;
+        }
+        .clear-button {
+            aspect-ratio: 1;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+        .clear-button.active {
+            background-color: #b71c1c;
+        }
+        .cell.selected {
+            background-color: #e8f5e9;
+        }
+        .cell.invalid {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .start-button {
+            display: block;
+            width: 200px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .start-button:hover {
+            background-color: #1976D2;
+        }
+        .start-button:disabled {
+            background-color: #BDBDBD;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: #c62828;
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background-color: #ffebee;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create New Sudoku Game</h1>
+        <div class="game-info">
+            <p>Set up the initial numbers for your Sudoku game</p>
+            <div class="error-message" id="error-message"></div>
+        </div>
+        <div class="sudoku-board" id="board">
+            {% for i in range(81) %}
+            <div class="cell" id="cell-{{ i }}" data-value="" data-row="{{ i // 9 }}" data-col="{{ i % 9 }}" data-box="{{ (i // 27) * 3 + ((i % 9) // 3) }}">
+            </div>
+            {% endfor %}
+        </div>
+        <div class="number-pad">
+            {% for i in range(1, 10) %}
+            <button class="number-button" data-number="{{ i }}">{{ i }}</button>
+            {% endfor %}
+            <button class="clear-button" data-number="0">C</button>
+        </div>
+        <button class="start-button" id="start-button" onclick="startGame()" disabled>Start Game</button>
+    </div>
+
+    <script>
+        let selectedNumber = null;
+        let selectedCell = null;
+        let hasError = false;
+
+        function getRowCells(row) {
+            return Array.from(document.querySelectorAll(`.cell[data-row="${row}"]`));
+        }
+
+        function getColCells(col) {
+            return Array.from(document.querySelectorAll(`.cell[data-col="${col}"]`));
+        }
+
+        function getBoxCells(box) {
+            return Array.from(document.querySelectorAll(`.cell[data-box="${box}"]`));
+        }
+
+        function checkForDuplicates(cells) {
+            const values = cells.map(cell => cell.dataset.value).filter(v => v !== '');
+            return new Set(values).size !== values.length;
+        }
+
+        function validateBoard() {
+            let isValid = true;
+            const errorMessage = document.getElementById('error-message');
+            const startButton = document.getElementById('start-button');
+
+            // Clear previous error states
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('invalid');
+            });
+            errorMessage.style.display = 'none';
+
+            // Check rows
+            for (let row = 0; row < 9; row++) {
+                if (checkForDuplicates(getRowCells(row))) {
+                    getRowCells(row).forEach(cell => {
+                        if (cell.dataset.value !== '') {
+                            cell.classList.add('invalid');
+                        }
+                    });
+                    isValid = false;
+                }
+            }
+
+            // Check columns
+            for (let col = 0; col < 9; col++) {
+                if (checkForDuplicates(getColCells(col))) {
+                    getColCells(col).forEach(cell => {
+                        if (cell.dataset.value !== '') {
+                            cell.classList.add('invalid');
+                        }
+                    });
+                    isValid = false;
+                }
+            }
+
+            // Check boxes
+            for (let box = 0; box < 9; box++) {
+                if (checkForDuplicates(getBoxCells(box))) {
+                    getBoxCells(box).forEach(cell => {
+                        if (cell.dataset.value !== '') {
+                            cell.classList.add('invalid');
+                        }
+                    });
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) {
+                errorMessage.textContent = 'Invalid Sudoku configuration. Please fix the highlighted cells.';
+                errorMessage.style.display = 'block';
+                startButton.disabled = true;
+            } else {
+                startButton.disabled = false;
+            }
+
+            return isValid;
+        }
+
+        // Handle number button clicks
+        document.querySelectorAll('.number-button, .clear-button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.number-button, .clear-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                selectedNumber = this.dataset.number;
+            });
+        });
+
+        // Handle cell clicks
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                // Remove selected class from all cells
+                document.querySelectorAll('.cell').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked cell
+                this.classList.add('selected');
+                selectedCell = this;
+
+                // If a number is selected, update the cell
+                if (selectedNumber !== null) {
+                    const value = selectedNumber === '0' ? '' : selectedNumber;
+                    this.textContent = value;
+                    this.dataset.value = value;
+                    validateBoard();
+                }
+            });
+        });
+
+        function startGame() {
+            if (!validateBoard()) {
+                return;
+            }
+
+            const cells = document.querySelectorAll('.cell');
+            const board = Array.from(cells).map(cell => cell.dataset.value || '0');
+            
+            fetch('/create-game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ board: board })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.game_id) {
+                    window.location.href = `/game/${data.game_id}`;
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

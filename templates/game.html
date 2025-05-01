@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game {{ game_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        .container {
+            max-width: 100%;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 1px;
+            background-color: #333;
+            padding: 2px;
+            margin: 1rem auto;
+            max-width: min(500px, 90vw);
+            aspect-ratio: 1;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            border: none;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            cursor: pointer;
+            position: relative;
+        }
+        .cell.starting {
+            background-color: #f5f5f5;
+            color: #333;
+            font-weight: bold;
+            cursor: not-allowed;
+        }
+        .cell.other-user {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        .cell.self-edit {
+            background-color: #fde3f1;
+            color: #d21951;
+        }
+        .cell:focus {
+            outline: 2px solid #4CAF50;
+        }
+        .cell:nth-child(3n) {
+            border-right: 2px solid #333;
+        }
+        .cell:nth-child(9n) {
+            border-right: none;
+        }
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #333;
+        }
+        .game-info {
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            text-align: center;
+        }
+        h1 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            margin-bottom: 1rem;
+        }
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 0.5rem;
+            max-width: min(500px, 90vw);
+            margin: 1rem auto;
+        }
+        .number-button {
+            aspect-ratio: 1;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .number-button:hover {
+            background-color: #45a049;
+        }
+        .number-button.active {
+            background-color: #2d6a30;
+        }
+        .clear-button {
+            aspect-ratio: 1;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+        .clear-button.active {
+            background-color: #b71c1c;
+        }
+        .cell.selected {
+            background-color: #e8f5e9;
+        }
+        .cell.edited-by {
+            font-size: 0.6em;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Game {{ game_id }}</h1>
+        <div class="game-info">
+            <p>Share this game ID with your friend to play together!</p>
+        </div>
+        <div class="sudoku-board" id="board">
+            {% for i in range(81) %}
+            <div class="cell {% if board[i].is_starting %}starting{% endif %} {% if board[i].edited_by and board[i].edited_by != 'anonymous' %}other-user{% endif %}" 
+                 id="cell-{{ i }}" 
+                 data-value="{{ board[i].value if board[i].value != '0' else '' }}"
+                 data-starting="{{ board[i].is_starting }}"
+                 data-edited-by="{{ board[i].edited_by if board[i].edited_by else '' }}">
+                {{ board[i].value if board[i].value != '0' else '' }}
+                {% if board[i].edited_by and board[i].edited_by != 'anonymous' %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="number-pad">
+            {% for i in range(1, 10) %}
+            <button class="number-button" data-number="{{ i }}">{{ i }}</button>
+            {% endfor %}
+            <button class="clear-button" data-number="0">C</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const gameId = '{{ game_id }}';
+        let selectedNumber = null;
+        let selectedCell = null;
+        const currentUser = 'User-' + Math.floor(Math.random() * 1000); // Generate a random user ID
+
+        // Join the game room
+        socket.emit('join_game', { game_id: gameId });
+
+        // Handle initial game state
+        socket.on('game_state', function(data) {
+            updateBoard(data.board);
+        });
+
+        // Handle cell updates from other players
+        socket.on('cell_updated', function(data) {
+            console.log(data);
+            const cell = document.getElementById(`cell-${data.cell_index}`);
+            cell.textContent = data.value === '0' ? '' : data.value;
+            console.log(cell);
+            cell.dataset.value = data.value === '0' ? '' : data.value;
+            
+            // Update edited by information
+            if (data.edited_by === currentUser) {
+                cell.classList.add('self-edit');
+            } else if (data.edited_by && data.edited_by !== 'anonymous') {
+                cell.classList.add('other-user');
+                let editedBySpan = cell.querySelector('.edited-by');
+            } else {
+                console.log(data.edited_by);
+            }
+        });
+
+        // Update board UI
+        function updateBoard(board) {
+            board.forEach((cellData, index) => {
+                const cell = document.getElementById(`cell-${index}`);
+                if (!cell.dataset.starting) {  // Only update non-starting cells
+                    cell.textContent = cellData.value !== '0' ? cellData.value : '';
+                    console.log(cellData.value);
+                    cell.dataset.value = cellData.value !== '0' ? cellData.value : '';
+                    
+                    // Update edited by information
+                    if (cellData.edited_by && cellData.edited_by !== 'anonymous') {
+                        cell.classList.add('other-user');
+                        let editedBySpan = cell.querySelector('.edited-by');
+                    }
+                }
+            });
+        }
+
+        // Handle number button clicks
+        document.querySelectorAll('.number-button, .clear-button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.number-button, .clear-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                selectedNumber = this.dataset.number;
+            });
+        });
+
+        // Handle cell clicks
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                // Skip if this is a starting cell
+                if (this.dataset.starting === 'true') {
+                    return;
+                }
+
+                // Remove selected class from all cells
+                document.querySelectorAll('.cell').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked cell
+                this.classList.add('selected');
+                selectedCell = this;
+
+                // If a number is selected, update the cell
+                if (selectedNumber !== null) {
+                    const cellIndex = parseInt(this.id.split('-')[1]);
+                    const newValue = selectedNumber === '0' ? '0' : selectedNumber;
+                    
+                    // Emit the update with the current user
+                    socket.emit('cell_update', {
+                        game_id: gameId,
+                        cell_index: cellIndex,
+                        value: newValue,
+                        user: currentUser
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
