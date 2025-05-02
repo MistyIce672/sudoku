@@ -13,7 +13,7 @@
         <% for(let i = 0; i < 9; i++) { %>
             <div class="row">
                 <% for(let j = 0; j < 9; j++) { %>
-                    <div class="cell" data-index="<%= i * 9 + j %>" onclick="setCellValue(this)">
+                    <div class="cell" data-index="<%= i * 9 + j %>">
                         <span class="cell-value"></span>
                     </div>
                 <% } %>
@@ -41,6 +41,7 @@ socket.on('game_state', (data) => {
 
 // Handle cell updates
 socket.on('cell_updated', (data) => {
+    console.log(data);
     const cell = document.querySelector(`.cell[data-index="${data.cellIndex}"]`);
     updateCellDisplay(cell, data.value);
     cell.classList.toggle('starting-cell', data.isStarting);
@@ -48,7 +49,16 @@ socket.on('cell_updated', (data) => {
     cell.classList.toggle('other-user-cell', data.editedBy && data.editedBy !== currentUsername);
 });
 
+// Add event delegation for cell clicks
+document.getElementById('gameBoard').addEventListener('click', function(e) {
+    const cell = e.target.closest('.cell');
+    if (cell) {
+        setCellValue(cell);
+    }
+});
+
 function setActiveNumber(number) {
+    console.log('Setting active number:', number);
     activeNumber = number;
     // Update button styles
     document.querySelectorAll('.number-btn').forEach(btn => {
@@ -62,10 +72,20 @@ function setActiveNumber(number) {
 }
 
 function setCellValue(cell) {
-    if (activeNumber === null) return;
+    console.log('Cell clicked:', cell);
+    console.log('Current active number:', activeNumber);
+    if(cell.classList.contains('starting-cell')){
+        return;
+    }
+    if (activeNumber === null) {
+        console.log('No active number selected');
+        return;
+    }
     
     const cellIndex = parseInt(cell.dataset.index);
     const value = activeNumber === 0 ? '' : activeNumber.toString();
+    console.log('Emitting cell update:', { gameId, cellIndex, value, user: currentUsername });
+    updateCellDisplay(cell, value);
     
     socket.emit('cell_update', {
         gameId,
@@ -84,7 +104,11 @@ function updateBoard(board) {
     board.forEach((cell, index) => {
         const cellElement = document.querySelector(`.cell[data-index="${index}"]`);
         updateCellDisplay(cellElement, cell.value);
-        cellElement.classList.toggle('starting-cell', cell.isStarting);
+        if (cell.isStarting && cell.value !== '0' && cell.value !== '') {
+            cellElement.classList.add('starting-cell');
+        } else {
+            cellElement.classList.remove('starting-cell');
+        }
         cellElement.classList.toggle('edited-cell', cell.editedBy === currentUsername);
         cellElement.classList.toggle('other-user-cell', cell.editedBy && cell.editedBy !== currentUsername);
     });

@@ -41,7 +41,7 @@ app.post('/create-game', (req, res) => {
     // Convert the initial board to the new structure
     const board = initialBoard.map(value => ({
         value,
-        isStarting: value !== '0',
+        isStarting: value !== '', // Only mark non-zero cells as starting cells
         editedBy: null
     }));
     
@@ -84,6 +84,7 @@ io.on('connection', (socket) => {
         if (activeGames[gameId]) {
             const cell = activeGames[gameId].board[cellIndex];
             // Only allow updates to non-starting cells
+            console.log(activeGames[gameId].board,"board");
             if (!cell.isStarting) {
                 cell.value = value;
                 cell.editedBy = user;
@@ -93,6 +94,8 @@ io.on('connection', (socket) => {
                     isStarting: cell.isStarting,
                     editedBy: user
                 });
+            } else {
+                console.log(`Cell ${cellIndex} is a starting cell, update rejected`);
             }
         }
     });
