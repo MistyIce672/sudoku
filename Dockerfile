@@ -1,29 +1,20 @@
-# Use Python 3.13 as the base image
-FROM python:3.13-slim
+# Use Node.js LTS version
+FROM node:20-slim
 
-# Set working directory
-WORKDIR /app
+# Create app directory
+WORKDIR /usr/src/app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package*.json ./
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
+# Install dependencies
+RUN npm install
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application
+# Copy app source
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 5000
+# Expose port
+EXPOSE 3000
 
-# Set environment variables
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
-
-# Command to run the application
-CMD ["python", "app.py"] 
+# Start the application
+CMD [ "npm", "start" ] 

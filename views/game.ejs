@@ -1,0 +1,92 @@
+<div class="game-container">
+    <h1>Game ID: <%= gameId %></h1>
+    <div class="player-info">
+        <span class="username">Playing as: <span id="currentUsername"></span></span>
+    </div>
+    <div class="number-pad">
+        <% for(let i = 1; i <= 9; i++) { %>
+            <button class="number-btn" onclick="setActiveNumber(<%= i %>)"><%= i %></button>
+        <% } %>
+        <button class="number-btn clear-btn" onclick="setActiveNumber(0)">Clear</button>
+    </div>
+    <div class="sudoku-board" id="gameBoard">
+        <% for(let i = 0; i < 9; i++) { %>
+            <div class="row">
+                <% for(let j = 0; j < 9; j++) { %>
+                    <div class="cell" data-index="<%= i * 9 + j %>" onclick="setCellValue(this)">
+                        <span class="cell-value"></span>
+                    </div>
+                <% } %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+const socket = io();
+const gameId = '<%= gameId %>';
+let activeNumber = null;
+const currentUsername = localStorage.getItem('sudoku_username') || 'Anonymous';
+
+// Display current username
+document.getElementById('currentUsername').textContent = currentUsername;
+
+// Join the game room
+socket.emit('join_game', { gameId, username: currentUsername });
+
+// Handle game state updates
+socket.on('game_state', (data) => {
+    updateBoard(data.board);
+});
+
+// Handle cell updates
+socket.on('cell_updated', (data) => {
+    const cell = document.querySelector(`.cell[data-index="${data.cellIndex}"]`);
+    updateCellDisplay(cell, data.value);
+    cell.classList.toggle('starting-cell', data.isStarting);
+    cell.classList.toggle('edited-cell', data.editedBy === currentUsername);
+    cell.classList.toggle('other-user-cell', data.editedBy && data.editedBy !== currentUsername);
+});
+
+function setActiveNumber(number) {
+    activeNumber = number;
+    // Update button styles
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    if (number !== 0) {
+        document.querySelector(`.number-btn:nth-child(${number})`).classList.add('active');
+    } else {
+        document.querySelector('.clear-btn').classList.add('active');
+    }
+}
+
+function setCellValue(cell) {
+    if (activeNumber === null) return;
+    
+    const cellIndex = parseInt(cell.dataset.index);
+    const value = activeNumber === 0 ? '' : activeNumber.toString();
+    
+    socket.emit('cell_update', {
+        gameId,
+        cellIndex,
+        value,
+        user: currentUsername
+    });
+}
+
+function updateCellDisplay(cell, value) {
+    const valueSpan = cell.querySelector('.cell-value');
+    valueSpan.textContent = value === '0' || value === '' ? '' : value;
+}
+
+function updateBoard(board) {
+    board.forEach((cell, index) => {
+        const cellElement = document.querySelector(`.cell[data-index="${index}"]`);
+        updateCellDisplay(cellElement, cell.value);
+        cellElement.classList.toggle('starting-cell', cell.isStarting);
+        cellElement.classList.toggle('edited-cell', cell.editedBy === currentUsername);
+        cellElement.classList.toggle('other-user-cell', cell.editedBy && cell.editedBy !== currentUsername);
+    });
+}
+</script> 

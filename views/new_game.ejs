@@ -1,0 +1,86 @@
+<div class="new-game-container">
+    <h1>Create New Game</h1>
+    <div class="number-pad">
+        <% for(let i = 1; i <= 9; i++) { %>
+            <button class="number-btn" onclick="setActiveNumber(<%= i %>)"><%= i %></button>
+        <% } %>
+        <button class="number-btn clear-btn" onclick="setActiveNumber(0)">Clear</button>
+    </div>
+    <div class="sudoku-board" id="initialBoard">
+        <% for(let i = 0; i < 9; i++) { %>
+            <div class="row">
+                <% for(let j = 0; j < 9; j++) { %>
+                    <div class="cell" data-index="<%= i * 9 + j %>" onclick="setCellValue(this)">
+                        <span class="cell-value"></span>
+                    </div>
+                <% } %>
+            </div>
+        <% } %>
+    </div>
+    <div class="button-container">
+        <button onclick="createGame()" class="btn">Create Game</button>
+        <button onclick="clearBoard()" class="btn clear-btn">Clear Board</button>
+    </div>
+</div>
+
+<script>
+let activeNumber = null;
+const board = Array(81).fill('');
+
+function setActiveNumber(number) {
+    activeNumber = number;
+    // Update button styles
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    if (number !== 0) {
+        document.querySelector(`.number-btn:nth-child(${number})`).classList.add('active');
+    } else {
+        document.querySelector('.clear-btn').classList.add('active');
+    }
+}
+
+function setCellValue(cell) {
+    if (activeNumber === null) return;
+    
+    const cellIndex = parseInt(cell.dataset.index);
+    const value = activeNumber === 0 ? '' : activeNumber.toString();
+    
+    board[cellIndex] = value;
+    updateCellDisplay(cell, value);
+}
+
+function updateCellDisplay(cell, value) {
+    const valueSpan = cell.querySelector('.cell-value');
+    valueSpan.textContent = value === '0' || value === '' ? '' : value;
+}
+
+function clearBoard() {
+    board.fill('');
+    document.querySelectorAll('.cell').forEach(cell => {
+        updateCellDisplay(cell, '');
+    });
+}
+
+function createGame() {
+    const username = localStorage.getItem('sudoku_username');
+    if (!username) {
+        alert('Please enter a username first');
+        window.location.href = '/';
+        return;
+    }
+    
+    fetch('/create-game', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ board })
+    })
+    .then(response => response.json())
+    .then(data => {
+        window.location.href = `/game/${data.gameId}`;
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script> 

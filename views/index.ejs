@@ -1,0 +1,43 @@
+<div class="home-container">
+    <h1>Welcome to Sudoku Game</h1>
+    <div class="button-container">
+        <div class="username-input">
+            <input type="text" id="username" placeholder="Enter your username" required>
+        </div>
+        <a href="/new-game" class="btn" onclick="return saveUsername()">Create New Game</a>
+        <div class="join-game">
+            <input type="text" id="gameId" placeholder="Enter Game ID">
+            <button onclick="joinGame()" class="btn">Join Game</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveUsername() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+        alert('Please enter a username');
+        return false;
+    }
+    localStorage.setItem('sudoku_username', username);
+    return true;
+}
+
+function joinGame() {
+    const username = document.getElementById('username').value.trim();
+    const gameId = document.getElementById('gameId').value;
+    
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+    
+    if (!gameId) {
+        alert('Please enter a game ID');
+        return;
+    }
+    
+    localStorage.setItem('sudoku_username', username);
+    window.location.href = `/game/${gameId}`;
+}
+</script> 

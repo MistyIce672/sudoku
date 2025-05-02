@@ -1,0 +1,196 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    padding: 20px;
+}
+
+.home-container, .new-game-container, .game-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn:hover {
+    background-color: #45a049;
+}
+
+.join-game {
+    display: flex;
+    gap: 10px;
+}
+
+.join-game input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 200px;
+}
+
+.number-pad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.number-btn {
+    padding: 15px;
+    font-size: 20px;
+    background-color: #f0f0f0;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.number-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.number-btn.active {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
+.clear-btn {
+    grid-column: span 2;
+    background-color: #f44336;
+    color: white;
+    border-color: #d32f2f;
+}
+
+.clear-btn:hover {
+    background-color: #d32f2f;
+}
+
+.clear-btn.active {
+    background-color: #d32f2f;
+    border-color: #b71c1c;
+}
+
+.sudoku-board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 1px;
+    background-color: #333;
+    border: 2px solid #333;
+    margin: 20px auto;
+    max-width: 450px;
+}
+
+.row {
+    display: contents;
+}
+
+.cell {
+    background-color: white;
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cell:hover {
+    background-color: #f0f0f0;
+}
+
+.cell-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.cell.starting-cell {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+}
+
+.cell.starting-cell .cell-value {
+    color: #000;
+}
+
+.cell.edited-cell {
+    background-color: #e6ffe6;
+}
+
+.cell.other-user-cell {
+    background-color: #e6f3ff;
+}
+
+.cell.other-user-cell .cell-value {
+    color: #0066cc;
+}
+
+/* Add borders for 3x3 boxes */
+.cell:nth-child(3n) {
+    border-right: 2px solid #333;
+}
+
+.row:nth-child(3n) .cell {
+    border-bottom: 2px solid #333;
+}
+
+.player-info {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+}
+
+.username {
+    font-size: 16px;
+    color: #666;
+}
+
+.username span {
+    font-weight: bold;
+    color: #333;
+} 
