@@ -86,6 +86,8 @@ function setCellValue(cell) {
     const value = activeNumber === 0 ? '' : activeNumber.toString();
     console.log('Emitting cell update:', { gameId, cellIndex, value, user: currentUsername });
     updateCellDisplay(cell, value);
+    checkForMistakes();
+    updateNumberCounts()
     
     socket.emit('cell_update', {
         gameId,
@@ -112,5 +114,99 @@ function updateBoard(board) {
         cellElement.classList.toggle('edited-cell', cell.editedBy === currentUsername);
         cellElement.classList.toggle('other-user-cell', cell.editedBy && cell.editedBy !== currentUsername);
     });
+    checkForMistakes();
+    updateNumberCounts();
+}
+
+function getRowCells(row) {
+    return Array.from(document.querySelectorAll(`.cell[data-index]`))
+        .filter(cell => Math.floor(parseInt(cell.dataset.index) / 9) === row);
+}
+
+function getColCells(col) {
+    return Array.from(document.querySelectorAll(`.cell[data-index]`))
+        .filter(cell => parseInt(cell.dataset.index) % 9 === col);
+}
+
+function getBoxCells(box) {
+    const boxRow = Math.floor(box / 3) * 3;
+    const boxCol = (box % 3) * 3;
+    return Array.from(document.querySelectorAll(`.cell[data-index]`))
+        .filter(cell => {
+            const index = parseInt(cell.dataset.index);
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            return Math.floor(row / 3) === Math.floor(boxRow / 3) && 
+                   Math.floor(col / 3) === Math.floor(boxCol / 3);
+        });
+}
+
+function checkForDuplicates(cells) {
+    const values = cells.map(cell => cell.querySelector('.cell-value').textContent)
+        .filter(v => v !== '');
+    return new Set(values).size !== values.length;
+}
+
+function checkForMistakes() {
+    // Clear previous invalid states
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.classList.remove('invalid');
+    });
+
+    // Check rows
+    for (let row = 0; row < 9; row++) {
+        const rowCells = getRowCells(row);
+        if (checkForDuplicates(rowCells)) {
+            rowCells.forEach(cell => {
+                if (cell.querySelector('.cell-value').textContent !== '') {
+                    cell.classList.add('invalid');
+                }
+            });
+        }
+    }
+
+    // Check columns
+    for (let col = 0; col < 9; col++) {
+        const colCells = getColCells(col);
+        if (checkForDuplicates(colCells)) {
+            colCells.forEach(cell => {
+                if (cell.querySelector('.cell-value').textContent !== '') {
+                    cell.classList.add('invalid');
+                }
+            });
+        }
+    }
+
+    // Check boxes
+    for (let box = 0; box < 9; box++) {
+        const boxCells = getBoxCells(box);
+        if (checkForDuplicates(boxCells)) {
+            boxCells.forEach(cell => {
+                if (cell.querySelector('.cell-value').textContent !== '') {
+                    cell.classList.add('invalid');
+                }
+            });
+        }
+    }
+}
+
+function countNumberOnBoard(number) {
+    return Array.from(document.querySelectorAll('.cell-value'))
+        .filter(cell => cell.textContent === number.toString()).length;
+}
+
+function updateNumberCounts() {
+    for (let i = 1; i <= 9; i++) {
+        const count = countNumberOnBoard(i);
+        const remaining = 9 - count;
+        const button = document.querySelector(`.number-btn:nth-child(${i})`);
+        
+        if (remaining === 0) {
+            button.style.display = 'none';
+        } else {
+            button.style.display = 'block';
+            button.innerHTML = `${i}<br><span class="remaining-count">${remaining}</span>`;
+        }
+    }
 }
 </script> 
